@@ -112,3 +112,65 @@ Request for storage by a pod
 
 StorageClass
 Defines dynamic provisioning of storage volumes
+
+
+
+KUBERNETES REQUEST FLOW (EXTERNAL → POD)
+
+Client
+↓
+DNS (resolves domain to LB / Ingress IP)
+↓
+Cloud Load Balancer (ELB / ALB)
+↓
+Ingress Controller (NGINX / ALB / Traefik)
+↓
+Ingress Rules
+↓
+Service (ClusterIP)
+↓
+kube-proxy (iptables / IPVS)
+↓
+Pod
+↓
+Container (Application)
+
+Response flows back the same path ↑
+
+INTERNAL POD-TO-POD FLOW
+
+Pod A
+↓
+Service DNS Name
+↓
+CoreDNS
+↓
+Service (ClusterIP)
+↓
+kube-proxy
+↓
+Pod B
+↓
+Container
+
+KUBECTL / DEPLOYMENT FLOW
+
+kubectl / CI-CD
+↓
+kube-apiserver
+↓
+AuthN / AuthZ (RBAC)
+↓
+Admission Controllers
+↓
+etcd (desired state stored)
+↓
+Controller Manager
+↓
+Scheduler
+↓
+kubelet
+↓
+Container Runtime
+↓
+Pod Running
