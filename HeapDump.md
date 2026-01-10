@@ -2,7 +2,7 @@ Scenario: High Memory Usage / Frequent GC – Heap Dump Analysis
 
 An issue was reported in production where the application was experiencing high memory usage and frequent garbage collection, leading to slow response times and occasional service instability. In some cases, the application was close to an OutOfMemoryError.
 
-Application logs did not clearly indicate the source of the problem, so I decided to perform a heap dump analysis to identify possible memory leaks or excessive object retention.
+Since logs did not clearly indicate the problem, I decided to perform a heap dump analysis.
 
 Action Taken
 
@@ -16,55 +16,63 @@ Captured a heap dump
 jmap -dump:live,format=b,file=heapDump.hprof <PID>
 
 
-live → captures only reachable (live) objects
-
-format=b → binary format
-
-heapDump.hprof → heap dump file
-
-Transferred the heap dump securely from the production server to a local machine for analysis.
+Safely transferred the heap dump file from the production server for offline analysis.
 
 Analysis
 
-I analyzed the heap dump using tools such as:
+I analyzed the heap dump using Eclipse MAT (Memory Analyzer Tool).
 
-Eclipse MAT (Memory Analyzer Tool)
+I followed a structured approach:
 
-(Alternatively) VisualVM
+1. Histogram Analysis
 
-During analysis, I focused on:
+Started with the Histogram view to identify:
 
-Top memory-consuming objects
+Classes with the highest number of instances
 
-Retained heap size
+Classes consuming the most heap memory
 
-Dominator tree
+This quickly highlighted unusually large object counts for a specific domain object.
 
-GC roots and object references
+2. Dominator Tree Analysis
+
+Used the Dominator Tree to:
+
+Identify objects with the largest retained heap
+
+Understand which objects were preventing others from being garbage collected
+
+This helped trace memory retention back to a single root object.
+
+3. GC Roots & Reference Chain
+
+Analyzed the GC root paths to see why objects were still reachable
+
+Found that objects were strongly referenced from a static cache / singleton
 
 Findings
 
-A large number of objects of a specific type were retained in memory
+Large numbers of domain objects were retained in memory
 
-These objects were referenced from a static cache / singleton
+Histogram showed continuous growth in object count
 
-The cache had no eviction policy and kept growing over time
+Dominator Tree revealed that a static in-memory cache was dominating a large portion of the heap
 
-This prevented garbage collection, causing heap pressure and frequent GC cycles
+The cache did not have an eviction or size limit
 
 Root Cause
 
-The root cause was a memory leak due to unbounded in-memory caching, where objects were strongly referenced and never released.
+The root cause was a memory leak caused by an unbounded static cache, which retained strong references and prevented garbage collection.
 
 Fix Implemented
 
 Introduced cache size limits and eviction (LRU-based)
 
-Replaced strong references with weak references where applicable
+Replaced strong references with WeakReference where appropriate
 
-Added monitoring and alerts for heap usage and GC activity
+Reviewed object lifecycle and ensured proper cleanup
 
-Reviewed object lifecycle to ensure proper cleanup
+Added heap and GC monitoring to catch similar issues early
 
 Outcome
 
@@ -74,4 +82,4 @@ GC frequency reduced significantly
 
 Application performance improved
 
-No further OutOfMemoryErrors observed in production
+No further memory-related incidents in production
