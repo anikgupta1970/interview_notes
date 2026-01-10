@@ -4,6 +4,7 @@ OOPs Concepts
 What is a functional Interface and Marker Interface? 
 How to make a class immuatble
 Anonymous Inner class
+Thread Dump and heap dump
  
 Collections in java? 
 Executor Framework? 
