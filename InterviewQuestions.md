@@ -33,7 +33,7 @@ Profiles in Spring boot
 Bean Scopes in SB 
 Difference between controller and rest controller 
 How do you handle Exception in Spring Boot 
-Transaction management 
+Transaction management and how does it work internally?
 JWT and Bearer Token. 
 Interceptors and Filters? 
 What is ORM/JPA? 
