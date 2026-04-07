@@ -1,0 +1,683 @@
+---
+openapi: 3.1.0
+components:
+  schemas:
+    ActionType:
+      type: string
+      enum:
+      - RESET
+      - SKIP
+      description: Repair action type
+    ChildWorkflow:
+      type: object
+      description: Child workflow execution details
+      properties:
+        workflowId:
+          type: string
+          description: Child workflow id
+        runId:
+          type: string
+          description: Run id of the workflow execution
+        startTime:
+          type: string
+          description: Start time of the workflow
+        versionChangeDetected:
+          type: boolean
+          description: Indicates if a version change caused non-determinism
+        failedActivities:
+          type: array
+          items:
+            $ref: "#/components/schemas/FailedActivity"
+          description: List of failed activities
+    FailedActivity:
+      type: object
+      description: Failed activity details
+      properties:
+        activityName:
+          type: string
+          description: Name of the failed activity
+        scheduledEventId:
+          type: integer
+          format: int64
+          description: Event id when activity was scheduled
+        failedEventId:
+          type: integer
+          format: int64
+          description: Event id when activity failed
+        resetToEventId:
+          type: integer
+          format: int64
+          description: Event id to reset workflow to
+        failureReason:
+          type: string
+          description: Failure reason
+        failureType:
+          type: string
+          description: Failure type
+        retryState:
+          type: string
+          description: Retry state when failure occurred
+        rootCause:
+          $ref: "#/components/schemas/RootCause"
+    HistoryView:
+      type: string
+      enum:
+      - FAILED
+      description: History view type for workflow
+    InstructionType:
+      type: string
+      enum:
+      - setup_sweepout
+      - setup_insta_alerts
+      examples:
+      - setup_sweepout
+      description: |
+        Specifies the type of instruction to be executed.
+        - setup_sweepout: Setup sweep-out instruction.
+        - setup_insta_alerts: Setup insta-alerts for a account.
+    Problem:
+      type: object
+      required:
+      - status
+      - title
+      description: RFC 7807 Problem Details for HTTP APIs
+      properties:
+        status:
+          type: integer
+          format: int32
+          examples:
+          - 400
+          description: The HTTP status code for this occurrence of the problem
+        title:
+          type: string
+          examples:
+          - Bad Request
+          pattern: \S
+          description: "A short, human-readable summary of the problem type"
+        instance:
+          type: string
+          examples:
+          - /api/products/123
+          description: A URI reference that identifies the specific occurrence of
+            the problem
+        detail:
+          type: string
+          examples:
+          - The request contains invalid parameters
+          description: A human-readable explanation specific to this occurrence of
+            the problem
+        violations:
+          type: array
+          items: {}
+          description: List of validation constraint violations that occurred
+    RootCause:
+      type: object
+      description: Root cause of failure
+      properties:
+        message:
+          type: string
+          description: Root cause message
+        type:
+          type: string
+          description: Root cause type
+        stackTrace:
+          type: string
+          description: Stack trace of the failure
+    SkipPayloadData:
+      type: object
+      description: Payload to carry forward when skipping a step
+      properties:
+        referenceNo:
+          type: string
+          description: "Reference number for downstream steps. Required for: SETUP_SWEEPOUT,\
+            \ SETUP_INSTA_ALERTS."
+    WorkflowInstanceInquiryResponse:
+      type: object
+      description: Workflow inquiry response
+      properties:
+        workflowId:
+          type: string
+          description: Workflow id
+        status:
+          type: string
+          description: Workflow execution status
+        childWorkflows:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChildWorkflow"
+          description: Child workflow executions
+        resetCommands:
+          type: array
+          items:
+            type: string
+          description: Suggested Temporal CLI reset commands
+    WorkflowRepairAction:
+      type: object
+      required:
+      - type
+      - type
+      description: "For RESET, only `type` is needed. For SKIP, `instructionType`\
+        \ is also required."
+      properties:
+        type:
+          $ref: "#/components/schemas/ActionType"
+          type: string
+          enum:
+          - RESET
+          - SKIP
+          description: Type of repair action
+        instructionType:
+          type:
+          - string
+          - object
+          - "null"
+          enum:
+          - setup_sweepout
+          - setup_insta_alerts
+          examples:
+          - setup_sweepout
+          description: Required when type is SKIP. The instruction type to bypass.
+        payload:
+          type:
+          - object
+          - "null"
+          description: Optional payload for SKIP. Carries data for downstream steps.
+            Required fields depend on instructionType.
+          properties:
+            referenceNo:
+              type: string
+              description: "Reference number for downstream steps. Required for: SETUP_SWEEPOUT,\
+                \ SETUP_INSTA_ALERTS."
+    WorkflowRepairRequest:
+      type: object
+      required:
+      - workflowId
+      - reason
+      - action
+      description: Workflow repair request payload
+      properties:
+        workflowId:
+          type: string
+          pattern: \S
+          description: Workflow ID to repair
+        reason:
+          type: string
+          pattern: \S
+          description: Reason for repair action
+        action:
+          type: object
+          required:
+          - type
+          - type
+          description: "For RESET, only `type` is needed. For SKIP, `instructionType`\
+            \ is also required."
+          properties:
+            type:
+              $ref: "#/components/schemas/ActionType"
+              type: string
+              enum:
+              - RESET
+              - SKIP
+              description: Type of repair action
+            instructionType:
+              type:
+              - string
+              - object
+              - "null"
+              enum:
+              - setup_sweepout
+              - setup_insta_alerts
+              examples:
+              - setup_sweepout
+              description: Required when type is SKIP. The instruction type to bypass.
+            payload:
+              type:
+              - object
+              - "null"
+              description: Optional payload for SKIP. Carries data for downstream
+                steps. Required fields depend on instructionType.
+              properties:
+                referenceNo:
+                  type: string
+                  description: "Reference number for downstream steps. Required for:\
+                    \ SETUP_SWEEPOUT, SETUP_INSTA_ALERTS."
+    WorkflowResetResponse:
+      type: object
+      description: Represents the result of a RESET repair operation on a workflow
+        execution
+      properties:
+        workflowName:
+          type: string
+          description: Name of the workflow being reset
+        workflowId:
+          type: string
+          description: Workflow ID that was reset
+        newRunId:
+          type: string
+          description: New run ID created after reset.
+        resetFromEventId:
+          type: integer
+          format: int64
+          description: Event ID from which the workflow was reset
+        activityName:
+          type: string
+          description: Name of the activity where reset was triggered
+    WorkflowSkipResponse:
+      type: object
+      description: Represents the result of a SKIP repair operation on a workflow
+        execution
+      properties:
+        workflowId:
+          type: string
+          description: Workflow ID on which the skip operation was applied
+        workflowName:
+          type: string
+          description: Name of the workflow where the skip operation occurred
+        instructionType:
+          type: string
+          description: Instruction type that was skipped
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    SecurityScheme:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Authentication
+tags:
+- name: Workflows
+  description: Workflows
+paths:
+  /workflows/repair:
+    post:
+      summary: Repair a workflow
+      description: |
+        Allows operational repair of Temporal workflows.
+        Two repair actions are supported:
+        • RESET – terminates the current workflow execution and starts a new one with the same workflowId but new run id.
+        • SKIP – sends a skip signal to workflow to bypass a failing step.
+        • Note: Both actions are only applicable when the workflow is in a RUNNING state
+        If the workflow has failed or completed, it cannot be repaired — a new execution
+        must be started manually. When an unhandled exception occurs during workflow
+        execution, Temporal keeps the workflow in RUNNING state, making it eligible
+        for RESET or SKIP repair.
+      tags:
+      - Workflows
+      requestBody:
+        description: Workflow repair request containing the target workflowId and
+          the repair action to perform.
+        content:
+          application/json:
+            examples:
+              RESET example:
+                summary: Reset a workflow
+                value:
+                  workflowId: order-processing-wf-abc123
+                  reason: Activity timed out due to downstream outage
+                  action:
+                    type: RESET
+              SKIP example:
+                summary: Skip a blocked workflow instruction
+                value:
+                  workflowId: order-processing-wf-abc123
+                  reason: Skipping instruction
+                  action:
+                    type: SKIP
+                    instructionType: setup_sweepout
+                    payload:
+                      referenceNo: REF-12345
+            schema:
+              $ref: "#/components/schemas/WorkflowRepairRequest"
+        required: true
+      responses:
+        "200":
+          description: Repair action successfully triggered
+          content:
+            application/json:
+              examples:
+                RESET result:
+                  summary: Successful workflow reset
+                  value:
+                  - workflowName: OrderProcessingWorkflow
+                    workflowId: order-processing-wf-abc123
+                    newRunId: new-run-xyz789
+                    resetFromEventId: 14
+                    activityName: ProcessPaymentActivity
+                SKIP result:
+                  summary: Skip signal sent to workflow
+                  value:
+                    workflowId: order-processing-child-wf-456
+                    workflowName: SendEmailWorkflow
+                    instructionType: setup_sweepout
+              schema:
+                oneOf:
+                - $ref: "#/components/schemas/WorkflowResetResponse"
+                - $ref: "#/components/schemas/WorkflowSkipResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                bad-request:
+                  summary: Invalid request parameters
+                  value: |
+                    {
+                      "status": 400,
+                      "title": "Bad Request",
+                      "instance": "/api/endpoint",
+                      "detail": "Detailed error message, if any",
+                      "violations": [
+                        {
+                          "field": "field",
+                          "in": "body",
+                          "message": "Violation message for the field"
+                        }
+                      ]
+                    }
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                unauthorized:
+                  summary: Authentication required
+                  value: |
+                    {
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "instance": "/api/endpoint",
+                      "detail": "Detailed error message, if any"
+                    }
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                forbidden:
+                  summary: Insufficient permissions
+                  value: |
+                    {
+                      "status": 403,
+                      "title": "Forbidden",
+                      "instance": "/api/endpoint",
+                      "detail": "Detailed error message, if any"
+                    }
+        "404":
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                not-found:
+                  summary: Resource not found
+                  value: |
+                    {
+                      "status": 404,
+                      "title": "Not Found",
+                      "instance": "/api/endpoint",
+                      "detail": "Detailed error message, if any"
+                    }
+        "424":
+          description: Failed Dependency
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                failed-dependency:
+                  summary: External dependency failed to return desired response
+                  value: |
+                    {
+                      "status": 424,
+                      "title": "Failed Dependency",
+                      "instance": "/api/endpoint",
+                      "detail": "External dependency failed to return desired response.."
+                    }
+        "500":
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                server-error:
+                  summary: Internal server error
+                  value: |
+                    {
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "instance": "/api/endpoint",
+                      "detail": "Detailed error message, if any"
+                    }
+      parameters:
+      - name: traceparent
+        in: header
+        required: false
+        description: "W3C Trace Context traceparent header for distributed tracing.\
+          \ See: https://www.w3.org/TR/trace-context/#traceparent-header"
+        schema:
+          type: string
+          examples:
+          - 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
+          pattern: "^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$"
+  /workflows/{workflowId}/history:
+    get:
+      summary: Fetch workflow execution history
+      description: |
+        Returns the execution history for a given Temporal workflow.
+        Two views are supported:
+        • Default (omit `view`) – returns the complete raw event history,
+         including every Temporal event. Useful for deep debugging and audit trails.
+        • `view=failed` – returns a summary of the workflow execution,
+        highlighting only failed activities along with their failure reasons, root causes,
+        retry states, and suggested Temporal CLI reset commands. Use this view to quickly
+        identify the issue.
+      tags:
+      - Workflows
+      parameters:
+      - description: The unique identifier of the Temporal workflow execution.
+        name: workflowId
+        required: true
+        in: path
+        schema:
+          type: string
+          pattern: \S
+      - description: Filter the history view. Pass `FAILED` to return only failed
+          activities.Omit to retrieve the full raw event history.
+        name: view
+        schema:
+          $ref: "#/components/schemas/HistoryView"
+        in: query
+      - name: traceparent
+        in: header
+        required: false
+        description: "W3C Trace Context traceparent header for distributed tracing.\
+          \ See: https://www.w3.org/TR/trace-context/#traceparent-header"
+        schema:
+          type: string
+          examples:
+          - 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
+          pattern: "^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$"
+      responses:
+        "200":
+          description: Workflow history retrieved successfully
+          content:
+            application/json:
+              examples:
+                Failed view:
+                  summary: Response with failed view
+                  value:
+                    workflowId: order-processing-wf-abc123
+                    status: WORKFLOW_EXECUTION_STATUS_RUNNING
+                    childWorkflows:
+                    - workflowId: order-processing-child-wf-456
+                      runId: run-abc
+                      startTime: 2024-01-01T10:00:00Z
+                      versionChangeDetected: false
+                      failedActivities:
+                      - activityName: ProcessPaymentActivity
+                        scheduledEventId: 10
+                        failedEventId: 20
+                        resetToEventId: 9
+                        failureReason: DB connection timeout
+                        failureType: DatabaseException
+                        retryState: RETRY_STATE_NON_RETRYABLE_FAILURE
+                        rootCause:
+                          message: Connection refused
+                          type: IOException
+                          stackTrace: '...'
+                    resetCommands:
+                    - temporal workflow reset --workflow-id "order-processing-child-wf-456"
+                      --event-id 9 --reason "Retrying ProcessPaymentActivity"
+                Full history view:
+                  summary: Response with default view
+                  value:
+                  - workflowId: order-processing-child-wf-456
+                    runId: run-abc
+                    eventId: 1
+                    eventType: EVENT_TYPE_WORKFLOW_EXECUTION_STARTED
+                    eventTime: "seconds: 1704067200"
+                    details: "{\"eventId\": \"1\", \"eventType\": \"EVENT_TYPE_WORKFLOW_EXECUTION_STARTED\"\
+                      }"
+              schema:
+                oneOf:
+                - $ref: "#/components/schemas/WorkflowInstanceInquiryResponse"
+                - $ref: "#/components/schemas/WorkflowInstanceInquiryResponse"
+        "404":
+          description: No workflow found for the given workflowId
+          content:
+            application/problem+json:
+              examples: {}
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "400":
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                bad-request:
+                  summary: Invalid request parameters
+                  value: |
+                    {
+                      "status": 400,
+                      "title": "Bad Request",
+                      "instance": "/api/endpoint",
+                      "detail": "Detailed error message, if any",
+                      "violations": [
+                        {
+                          "field": "field",
+                          "in": "body",
+                          "message": "Violation message for the field"
+                        }
+                      ]
+                    }
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                unauthorized:
+                  summary: Authentication required
+                  value: |
+                    {
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "instance": "/api/endpoint",
+                      "detail": "Detailed error message, if any"
+                    }
+        "403":
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                forbidden:
+                  summary: Insufficient permissions
+                  value: |
+                    {
+                      "status": 403,
+                      "title": "Forbidden",
+                      "instance": "/api/endpoint",
+                      "detail": "Detailed error message, if any"
+                    }
+        "424":
+          description: Failed Dependency
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                failed-dependency:
+                  summary: External dependency failed to return desired response
+                  value: |
+                    {
+                      "status": 424,
+                      "title": "Failed Dependency",
+                      "instance": "/api/endpoint",
+                      "detail": "External dependency failed to return desired response.."
+                    }
+        "500":
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                server-error:
+                  summary: Internal server error
+                  value: |
+                    {
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "instance": "/api/endpoint",
+                      "detail": "Detailed error message, if any"
+                    }
+info:
+  contact:
+    name: SpliceForms
+  description: |
+    Spliceforms API
+
+    ## Error Handling Convention
+
+    This API uses standard HTTP status codes along with RFC 7807 Problem JSON structure for error responses.
+    The following conventions are followed:
+
+    **Success Responses:**
+    - **200 OK** - Request processed successfully, returns data
+    - **201 Created** - Resource created successfully
+    - **202 Accepted** - Request accepted for asynchronous processing
+
+    **Error Responses:**
+    - **400 Bad Request** - Invalid request parameters or malformed request
+    - **404 Not Found** - Requested resource not found (e.g., customer ID doesn't exist)
+    - **424 Failed Dependency** - External dependency failed to return desired response (e.g., Backend service did not return response in expected format)
+    - **409 Conflict** - Duplicate resource conflict (e.g., duplicate payment transaction, duplicate application)
+    - **500 Internal Server Error** - Server-side processing error
+
+    **Other Cases:**
+    - **List APIs with no data** - Returns 200 OK with empty array `[]`
+    - **List APIs with invalid parent resource** - Returns 404 Not Found (e.g., `/customers/{id}/accounts` where customer doesn't exist)
+
+    All error responses follow RFC 7807 Problem Details format with `status`, `title`, `instance`, and optional `violations` fields.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  title: stitch-workflow API
+  version: 2.0.84-SNAPSHOT
+security:
+- bearer: []
